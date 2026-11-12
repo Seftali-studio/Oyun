@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Altın Madencisi - Save Sistemli Oyun</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a2e;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .oyun-kutusu {
+            background-color: #16213e;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+            width: 320px;
+        }
+        h1 { color: #f1c40f; margin-bottom: 5px; }
+        .skor { font-size: 2.2em; font-weight: bold; margin: 15px 0; color: #2ecc71; }
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        button:active { transform: scale(0.96); }
+        .btn-kaz { background-color: #f1c40f; color: #1a1a2e; font-size: 1.2em; }
+        .btn-gelistir { background-color: #3498db; color: white; }
+        .btn-kaydet { background-color: #2ecc71; color: white; }
+        .btn-sifirla { background-color: #e74c3c; color: white; font-size: 0.85em; }
+        #durum-mesaji { font-size: 0.9em; color: #bdc3c7; height: 20px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="oyun-kutusu">
+    <h1>⛏️ Altın Madencisi</h1>
+    <p>Seviye: <span id="seviye">1</span> (Tık Başına: +<span id="guc">1</span>)</p>
+    <div class="skor"><span id="altin">0</span> Altın</div>
+
+    <button class="btn-kaz" onclick="altinKaz()">Altın Kaz!</button>
+    <button class="btn-gelistir" onclick="kazmaGelistir()">Kazmayı Geliştir (<span id="maliyet">10</span> Altın)</button>
+    <hr style="border-color: #0f3460; margin: 15px 0;">
+    <button class="btn-kaydet" onclick="oyunuKaydet()">💾 Oyunu Kaydet</button>
+    <button class="btn-sifirla" onclick="kaydiSifirla()">🗑️ Kaydı Sıfırla</button>
+
+    <div id="durum-mesaji"></div>
+</div>
+
+<script>
+    // Başlangıç Değerleri
+    let oyunVerisi = {
+        altin: 0,
+        seviye: 1,
+        guc: 1,
+        maliyet: 10
+    };
+
+    // Sayfa açıldığında kayıtlı veriyi kontrol et ve yükle
+    window.onload = function() {
+        const kayit = localStorage.getItem("altinMadencisiSave");
+        if (kayit) {
+            oyunVerisi = JSON.parse(kayit);
+            ekraniGuncelle();
+            mesajGoster("Önceki kayıt başarıyla yüklendi!");
+        }
+    };
+
+    function altinKaz() {
+        oyunVerisi.altin += oyunVerisi.guc;
+        ekraniGuncelle();
+    }
+
+    function kazmaGelistir() {
+        if (oyunVerisi.altin >= oyunVerisi.maliyet) {
+            oyunVerisi.altin -= oyunVerisi.maliyet;
+            oyunVerisi.seviye += 1;
+            oyunVerisi.guc += 2;
+            oyunVerisi.maliyet = Math.floor(oyunVerisi.maliyet * 1.6);
+            ekraniGuncelle();
+            oyunuKaydet(); // Geliştirme yapınca otomatik kaydet
+        } else {
+            mesajGoster("Yeterli altının yok!");
+        }
+    }
+
+    // Veriyi tarayıcıya (localStorage) kaydetme fonksiyonu
+    function oyunuKaydet() {
+        localStorage.setItem("altinMadencisiSave", JSON.stringify(oyunVerisi));
+        mesajGoster("✅ Oyun kaydedildi!");
+    }
+
+    // Kaydı silme fonksiyonu
+    function kaydiSifirla() {
+        if(confirm("Tüm ilerlemen silinecek, emin misin?")) {
+            localStorage.removeItem("altinMadencisiSave");
+            oyunVerisi = { altin: 0, seviye: 1, guc: 1, maliyet: 10 };
+            ekraniGuncelle();
+            mesajGoster("Kayıt sıfırlandı.");
+        }
+    }
+
+    function ekraniGuncelle() {
+        document.getElementById("altin").innerText = oyunVerisi.altin;
+        document.getElementById("seviye").innerText = oyunVerisi.seviye;
+        document.getElementById("guc").innerText = oyunVerisi.guc;
+        document.getElementById("maliyet").innerText = oyunVerisi.maliyet;
+    }
+
+    function mesajGoster(metin) {
+        const mesajAlani = document.getElementById("durum-mesaji");
+        mesajAlani.innerText = metin;
+        setTimeout(() => { mesajAlani.innerText = ""; }, 2500);
+    }
+
+    // Her 15 saniyede bir otomatik kayıt yap
+    setInterval(oyunuKaydet, 15000);
+</script>
+
+</body>
+</html>
