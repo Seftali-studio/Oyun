@@ -3,118 +3,888 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Otobüs Simülatörü - Ege Turizm</title>
+    <title>Ege Turizm 3D - Otobüs Simülatörü</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #111; font-family: sans-serif; }
-        #ui {
-            position: absolute; top: 10px; left: 10px; color: white;
-            background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px;
-            pointer-events: none;
+        * { box-sizing: border-box; user-select: none; }
+        body { margin: 0; overflow: hidden; background: #0f172a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: white; }
+        
+        /* ÜST BİLGİ PANELİ */
+        #hud-top {
+            position: absolute; top: 12px; left: 12px; right: 12px;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            pointer-events: none; z-index: 10;
         }
-        .btn-panel { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
-        button { padding: 12px 20px; font-weight: bold; background: #eab308; border: none; border-radius: 6px; cursor: pointer; }
-        button:hover { background: #ca8a04; }
+        .hud-card {
+            background: rgba(15, 23, 42, 0.85); border: 1px solid #334155;
+            padding: 10px 16px; border-radius: 10px; backdrop-filter: blur(6px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .hud-row { display: flex; gap: 15px; font-weight: bold; font-size: 0.95em; }
+        .badge { background: #1e293b; padding: 5px 10px; border-radius: 6px; border: 1px solid #475569; }
+        .gold { color: #facc15; }
+        .cyan { color: #38bdf8; }
+        .green { color: #4ade80; }
+
+        /* BİLDİRİM BANNERI */
+        #notification-bar {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(2, 132, 199, 0.95); color: white; padding: 10px 24px;
+            border-radius: 20px; font-weight: bold; font-size: 0.95em;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 20;
+            transition: opacity 0.3s; pointer-events: none;
+        }
+
+        /* ALT AKSİYON BUTONLARI */
+        #hud-bottom {
+            position: absolute; bottom: 20px; left: 20px; right: 90px;
+            display: flex; gap: 10px; flex-wrap: wrap; align-items: center; z-index: 10;
+        }
+        .action-btn {
+            background: #2563eb; color: white; border: none; padding: 12px 18px;
+            border-radius: 8px; font-weight: bold; font-size: 0.95em; cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4); transition: all 0.15s;
+        }
+        .action-btn:hover { background: #1d4ed8; transform: translateY(-2px); }
+        .action-btn:disabled { background: #475569; opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-green { background: #16a34a; }
+        .btn-green:hover { background: #15803d; }
+        .btn-amber { background: #d97706; }
+        .btn-amber:hover { background: #b45309; }
+        .btn-purple { background: #7c3aed; }
+        .btn-purple:hover { background: #6d28d9; }
+
+        /* CEP TELEFONU İKONU VE ARAYÜZÜ */
+        #phone-toggle {
+            position: absolute; bottom: 20px; right: 20px; width: 58px; height: 58px;
+            border-radius: 50%; background: linear-gradient(135deg, #38bdf8, #2563eb);
+            border: 3px solid #f8fafc; color: white; font-size: 26px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.6); z-index: 30;
+        }
+        #phone-modal {
+            display: none; position: absolute; bottom: 90px; right: 20px;
+            width: 340px; height: 520px; background: #090d16;
+            border: 4px solid #475569; border-radius: 28px; padding: 14px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.85); z-index: 30;
+            flex-direction: column;
+        }
+        .phone-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #1e293b; padding-bottom: 8px; margin-bottom: 10px;
+            font-size: 0.85em; color: #94a3b8;
+        }
+        .phone-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 10px; }
+        .tab-btn {
+            background: #1e293b; border: none; color: #cbd5e1; padding: 7px 4px;
+            border-radius: 8px; font-size: 0.75em; font-weight: bold; cursor: pointer;
+        }
+        .tab-btn.active { background: #0284c7; color: white; }
+        .phone-content { flex: 1; overflow-y: auto; padding-right: 4px; }
+        .app-item {
+            background: #1e293b; border: 1px solid #334155; padding: 10px;
+            border-radius: 10px; margin-bottom: 8px; display: flex;
+            justify-content: space-between; align-items: center; font-size: 0.85em;
+        }
+        .app-item button {
+            background: #16a34a; color: white; border: none; padding: 6px 10px;
+            border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85em;
+        }
+        .app-item button:disabled { background: #475569; }
+
+        /* YIKAMA EKRANI OVERLAY */
+        #wash-overlay {
+            display: none; position: absolute; top: 130px; left: 50%; transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.9); border: 2px solid #38bdf8;
+            padding: 12px 20px; border-radius: 12px; text-align: center; z-index: 25;
+        }
+        .progress-bar { width: 220px; height: 14px; background: #334155; border-radius: 7px; overflow: hidden; margin: 8px auto; }
+        .progress-fill { height: 100%; background: #38bdf8; width: 0%; transition: width 0.1s; }
+
+        /* KONTROL İPUCU */
+        #controls-help {
+            position: absolute; top: 80px; left: 12px; background: rgba(15,23,42,0.7);
+            padding: 8px 12px; border-radius: 8px; font-size: 0.8em; color: #cbd5e1; pointer-events: none;
+        }
     </style>
-    <!-- Three.js 3D Kütüphanesi -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-<div id="ui">
-    <h2>🚌 3D Yolculuk Modu</h2>
-    <p>Para: <span id="para">5000</span> ₺</p>
-    <p>Durum: <span id="durum">Yolda Sürüş Yapılıyor... (W/S ile hızlan)</span></p>
+<!-- ÜST HUD -->
+<div id="hud-top">
+    <div class="hud-card">
+        <div class="hud-row">
+            <span class="badge gold">💰 <span id="ui-money">5000</span> ₺</span>
+            <span class="badge cyan">📍 <span id="ui-location">Denizli Şubesi</span></span>
+            <span class="badge green">👥 Yolcu: <span id="ui-passengers">0</span>/<span id="ui-capacity">30</span></span>
+            <span class="badge">🥤 Su: <span id="ui-water">0</span> | 🧁 Kek: <span id="ui-cake">0</span></span>
+        </div>
+    </div>
+    <div class="hud-card">
+        <div class="hud-row">
+            <span class="badge">🚀 Hız: <span id="ui-speed">0</span> km/s</span>
+            <span class="badge">🧼 Temizlik: %<span id="ui-clean">100</span></span>
+            <span class="badge gold">⏱️ Kalan Süre: <span id="ui-timer">--:--</span></span>
+        </div>
+    </div>
 </div>
 
-<div class="btn-panel">
-    <button onclick="ikramDagit()">🧃 İkram Dağıt (Su/Kek)</button>
-    <button onclick="oyunuKaydet()" style="background: #22c55e; color:white;">💾 Kaydet</button>
+<div id="controls-help">
+    <b>Kontroller:</b> W/S: Gaz-Fren | A/D: Direksiyon | Fare Sürükle: Kamera | P: Telefon
+</div>
+
+<div id="notification-bar">Hoş geldin Kaptan! Şubeden bilet satıp ikram yükleyerek sefere çıkabilirsin.</div>
+
+<!-- YIKAMA MODU BİLGİSİ -->
+<div id="wash-overlay">
+    <div>🧽 <b>OTOBÜS YIKAMA MODU AKTİF!</b></div>
+    <div style="font-size:0.85em; color:#cbd5e1; margin-top:4px;">Farenin sol tuşuna basılı tutup otobüsün kirli yerlerini fırçala!</div>
+    <div class="progress-bar"><div class="progress-fill" id="wash-progress"></div></div>
+    <button class="action-btn btn-green" style="padding:6px 14px; font-size:0.85em;" onclick="exitWashMode()">Yıkamayı Bitir</button>
+</div>
+
+<!-- ALT AKSİYON PANELİ -->
+<div id="hud-bottom">
+    <button class="action-btn btn-green" id="btn-tickets" onclick="sellTickets()">🎟️ Bilet Kes & Yolcu Al</button>
+    <button class="action-btn btn-amber" id="btn-start-trip" onclick="openRouteSelector()">🚌 Sefer Başlat (5 Dk)</button>
+    <button class="action-btn btn-purple" id="btn-serve" style="display:none;" onclick="serveRefreshments()">🧁 İkram Dağıt (Su & Kek)</button>
+    <button class="action-btn" id="btn-wash" style="display:none;" onclick="enterWashMode()">🚿 Otobüsü Yıka (Mola)</button>
+    <button class="action-btn btn-green" id="btn-resume" style="display:none;" onclick="resumeFromBreak()">▶️ Yola Devam Et</button>
+</div>
+
+<!-- TELEFON İKONU VE EKRANI -->
+<div id="phone-toggle" onclick="togglePhone()" title="Şirket Telefonu (P)">📱</div>
+<div id="phone-modal">
+    <div class="phone-header">
+        <span>📶 EgeNet 5G</span>
+        <b>ŞİRKET YÖNETİMİ</b>
+        <span style="cursor:pointer;" onclick="togglePhone()">✖</span>
+    </div>
+    <div class="phone-tabs">
+        <button class="tab-btn active" onclick="switchTab('market', this)">🛒 Market</button>
+        <button class="tab-btn" onclick="switchTab('branches', this)">🏢 Şubeler</button>
+        <button class="tab-btn" onclick="switchTab('garage', this)">🚌 Garaj</button>
+        <button class="tab-btn" onclick="switchTab('staff', this)">👔 Ekip</button>
+    </div>
+    <div class="phone-content" id="phone-body"></div>
 </div>
 
 <script>
-    let oyun = { para: 5000, skor: 0 };
-    
-    // --- 3D SAHNE KURULUMU (THREE.JS) ---
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb); // Gökyüzü mavisi
+// ==================== OYUN DURUMU VE KAYIT SİSTEMİ ====================
+const DEFAULT_STATE = {
+    money: 5000,
+    currentCity: "Denizli",
+    unlockedCities: ["Denizli", "İzmir"],
+    water: 10,
+    cake: 10,
+    passengers: 0,
+    cleanliness: 100,
+    busLevel: 1, // 1: Standart, 2: Konfor, 3: VIP Travego
+    engineLevel: 1,
+    hasAttendant: false, // Muavin
+    hasDriver: false,
+    // Sefer değişkenleri
+    mode: "BRANCH", // BRANCH (Şubede), DRIVING (Yolda), BREAK (Molada), WASHING (Yıkamada)
+    destinationCity: "",
+    tripTimeLeft: 0, // 300 saniye (5 dakika)
+    servedThisTrip: false,
+    breakTakenThisTrip: false,
+    serviceRequested: false
+};
 
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
 
-    // Işık
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(0, 20, 10);
-    scene.add(light);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+const CITIES = [
+    { name: "Denizli", cost: 0, ticketPrice: 120 },
+    { name: "İzmir", cost: 0, ticketPrice: 140 },
+    { name: "Aydın", cost: 4000, ticketPrice: 130 },
+    { name: "Afyon", cost: 6500, ticketPrice: 160 },
+    { name: "Antalya", cost: 10000, ticketPrice: 200 },
+    { name: "İstanbul", cost: 25000, ticketPrice: 350 }
+];
 
-    // Yol
-    const yolGeo = new THREE.PlaneGeometry(10, 1000);
-    const yolMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
-    const yol = new THREE.Mesh(yolGeo, yolMat);
-    yol.rotation.x = -Math.PI / 2;
-    scene.add(yol);
+const BUS_MODELS = [
+    { level: 1, name: "Ege Star 35", capacity: 30, color: 0x0284c7, cost: 0 },
+    { level: 2, name: "Anadolu Tourismo", capacity: 42, color: 0xd97706, cost: 12000 },
+    { level: 3, name: "Kral VIP Travego", capacity: 54, color: 0xdc2626, cost: 30000 }
+];
 
-    // Otobüs (Basit 3D Kutu Temsili - İleride detaylı 3D model ekleyebiliriz)
-    const otobusGeo = new THREE.BoxGeometry(2, 2, 5);
-    const otobusMat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
-    const otobüs = new THREE.Mesh(otobusGeo, otobusMat);
-    otobüs.position.set(0, 1, 0);
-    scene.add(otobüs);
+function saveGame() {
+    // Sadece kalıcı şirket verilerini kaydet (sefer ortasında kapanırsa şubede güvenli başlasın veya durum korunsun)
+    const saveObj = { ...state };
+    localStorage.setItem("egeTurizm3DSave", JSON.stringify(saveObj));
+}
 
-    camera.position.set(0, 5, -8);
-    camera.lookAt(otobüs.position);
+function loadGame() {
+    const saved = localStorage.getItem("egeTurizm3DSave");
+    if (saved) {
+        state = { ...DEFAULT_STATE, ...JSON.parse(saved) };
+        if (state.mode === "WASHING") state.mode = "BREAK";
+    }
+}
 
-    // Hareket Kontrolleri
-    let hiz = 0;
-    let tuslar = { ileri: false, geri: false };
+function resetGame() {
+    if (confirm("Tüm şirket ilerlemeniz sıfırlanacak. Emin misiniz?")) {
+        localStorage.removeItem("egeTurizm3DSave");
+        state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+        busMesh.position.set(0, 0, 0);
+        busMesh.rotation.set(0, 0, 0);
+        updateBusAppearance();
+        updateUI();
+        notify("Oyun sıfırlandı. Denizli Şubesinde yeni başlangıç!");
+    }
+}
 
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'w' || e.key === 'ArrowUp') tuslar.ileri = true;
-        if (e.key === 's' || e.key === 'ArrowDown') tuslar.geri = true;
-    });
-    window.addEventListener('keyup', (e) => {
-        if (e.key === 'w' || e.key === 'ArrowUp') tuslar.ileri = false;
-        if (e.key === 's' || e.key === 'ArrowDown') tuslar.geri = false;
-    });
+// ==================== THREE.JS 3D SAHNE VE OTOBÜS MODELİ ====================
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x7dd3fc);
+scene.fog = new THREE.Fog(0x7dd3fc, 60, 260);
 
-    // Kayıt Yükleme
-    window.onload = function() {
-        const kayit = localStorage.getItem("sim3dSave");
-        if(kayit) {
-            oyun = JSON.parse(kayit);
-            document.getElementById("para").innerText = oyun.para;
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+// Işıklar
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+dirLight.position.set(40, 80, 30);
+dirLight.castShadow = true;
+scene.add(dirLight);
+
+// Zemin (Çimen)
+const groundGeo = new THREE.PlaneGeometry(1000, 2000);
+const groundMat = new THREE.MeshLambertMaterial({ color: 0x15803d });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.05;
+scene.add(ground);
+
+// Asfalt Yol
+const roadGeo = new THREE.PlaneGeometry(16, 2000);
+const roadMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
+const road = new THREE.Mesh(roadGeo, roadMat);
+road.rotation.x = -Math.PI / 2;
+scene.add(road);
+
+// Yol Şeritleri (Sonsuz döngü için havuz)
+const stripes = [];
+const stripeGeo = new THREE.PlaneGeometry(0.4, 4);
+const stripeMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+for (let i = -20; i < 40; i++) {
+    const s = new THREE.Mesh(stripeGeo, stripeMat);
+    s.rotation.x = -Math.PI / 2;
+    s.position.set(0, 0.02, i * 12);
+    scene.add(s);
+    stripes.push(s);
+}
+
+// Yol Kenarı Ağaçlar ve Tabelalar
+const sceneryObjects = [];
+function createTree(x, z) {
+    const group = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2.5), new THREE.MeshLambertMaterial({ color: 0x78350f }));
+    trunk.position.y = 1.25;
+    const leaves = new THREE.Mesh(new THREE.ConeGeometry(2.2, 5, 8), new THREE.MeshLambertMaterial({ color: 0x166534 }));
+    leaves.position.y = 4.5;
+    group.add(trunk, leaves);
+    group.position.set(x, 0, z);
+    scene.add(group);
+    sceneryObjects.push(group);
+}
+for (let i = -15; i < 35; i++) {
+    createTree(-13 - Math.random() * 10, i * 15);
+    createTree(13 + Math.random() * 10, i * 15);
+}
+
+// ŞUBE BİNASI VE MOLA TESİSİ BİNASI
+const stationGroup = new THREE.Group();
+const building = new THREE.Mesh(new THREE.BoxGeometry(14, 6, 10), new THREE.MeshLambertMaterial({ color: 0xf1f5f9 }));
+building.position.set(-16, 3, 0);
+const roof = new THREE.Mesh(new THREE.BoxGeometry(15, 0.8, 11), new THREE.MeshLambertMaterial({ color: 0x0284c7 }));
+roof.position.set(-16, 6.4, 0);
+const canopy = new THREE.Mesh(new THREE.BoxGeometry(10, 0.4, 12), new THREE.MeshLambertMaterial({ color: 0x334155 }));
+canopy.position.set(-6, 4.8, 0);
+stationGroup.add(building, roof, canopy);
+scene.add(stationGroup);
+
+// ==================== DETAYLI 3D OTOBÜS MODELİ ====================
+const busMesh = new THREE.Group();
+let bodyMat = new THREE.MeshPhongMaterial({ color: 0x0284c7, shininess: 80 });
+const glassMat = new THREE.MeshPhongMaterial({ color: 0x0f172a, shininess: 100 });
+const dirtMat = new THREE.MeshLambertMaterial({ color: 0x78350f, transparent: true, opacity: 0 });
+
+// Ana Gövde
+const mainBody = new THREE.Mesh(new THREE.BoxGeometry(2.7, 2.5, 9.5), bodyMat);
+mainBody.position.y = 1.85;
+busMesh.add(mainBody);
+
+// Üst Tavan Detayı & Klima Ünitesi
+const topRoof = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.3, 9.2), new THREE.MeshLambertMaterial({ color: 0xf8fafc }));
+topRoof.position.y = 3.2;
+const acUnit = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 2.2), new THREE.MeshLambertMaterial({ color: 0xcbd5e1 }));
+acUnit.position.set(0, 3.45, 0.5);
+busMesh.add(topRoof, acUnit);
+
+// Ön Cam ve Yan Camlar
+const frontGlass = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.3, 0.15), glassMat);
+frontGlass.position.set(0, 2.2, 4.72);
+const sideGlassL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 7.6), glassMat);
+sideGlassL.position.set(-1.33, 2.25, -0.2);
+const sideGlassR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 7.6), glassMat);
+sideGlassR.position.set(1.33, 2.25, -0.2);
+busMesh.add(frontGlass, sideGlassL, sideGlassR);
+
+// Farlar ve Tampon
+const bumper = new THREE.Mesh(new THREE.BoxGeometry(2.75, 0.5, 0.3), new THREE.MeshLambertMaterial({ color: 0x1e293b }));
+bumper.position.set(0, 0.85, 4.75);
+const headLightL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.1), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+headLightL.position.set(-0.95, 1.0, 4.76);
+const headLightR = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.1), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+headLightR.position.set(0.95, 1.0, 4.76);
+busMesh.add(bumper, headLightL, headLightR);
+
+// Yan Aynalar
+const mirrorL = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.5, 0.2), new THREE.MeshLambertMaterial({ color: 0x0f172a }));
+mirrorL.position.set(-1.55, 2.4, 4.3);
+const mirrorR = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.5, 0.2), new THREE.MeshLambertMaterial({ color: 0x0f172a }));
+mirrorR.position.set(1.55, 2.4, 4.3);
+busMesh.add(mirrorL, mirrorR);
+
+// Kir Katmanı (Yıkama mekaniği için otobüsün dışını saran yarı saydam çamur katmanı)
+const dirtMesh = new THREE.Mesh(new THREE.BoxGeometry(2.76, 2.52, 9.56), dirtMat);
+dirtMesh.position.y = 1.85;
+busMesh.add(dirtMesh);
+
+// Tekerlekler
+const wheels = [];
+const wheelGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.4, 16);
+const wheelMat = new THREE.MeshLambertMaterial({ color: 0x090d16 });
+const wheelPositions = [
+    [-1.3, 0.55, 3.1], [1.3, 0.55, 3.1],   // Ön tekerler
+    [-1.3, 0.55, -2.8], [1.3, 0.55, -2.8]  // Arka tekerler
+];
+wheelPositions.forEach(pos => {
+    const w = new THREE.Mesh(wheelGeo, wheelMat);
+    w.rotation.z = Math.PI / 2;
+    w.position.set(pos[0], pos[1], pos[2]);
+    busMesh.add(w);
+    wheels.push(w);
+});
+
+scene.add(busMesh);
+
+function updateBusAppearance() {
+    const model = BUS_MODELS.find(m => m.level === state.busLevel) || BUS_MODELS[0];
+    bodyMat.color.setHex(model.color);
+    dirtMat.opacity = ((100 - state.cleanliness) / 100) * 0.75;
+}
+
+// ==================== KAMERA VE FARE KONTROLÜ ====================
+let camYaw = Math.PI; // Arkadan bakış
+let camPitch = 0.28;
+let camDistance = 13;
+let isDragging = false;
+let prevMouse = { x: 0, y: 0 };
+
+const raycaster = new THREE.Raycaster();
+const mouseVec = new THREE.Vector2();
+
+window.addEventListener('mousedown', (e) => {
+    if (e.target.tagName !== 'CANVAS') return;
+    isDragging = true;
+    prevMouse = { x: e.clientX, y: e.clientY };
+    if (state.mode === "WASHING") scrubBus(e);
+});
+
+window.addEventListener('mouseup', () => isDragging = false);
+
+window.addEventListener('mousemove', (e) => {
+    if (state.mode === "WASHING" && isDragging) {
+        scrubBus(e);
+        return;
+    }
+    if (isDragging) {
+        const dx = e.clientX - prevMouse.x;
+        const dy = e.clientY - prevMouse.y;
+        camYaw -= dx * 0.007;
+        camPitch = Math.max(0.08, Math.min(1.2, camPitch + dy * 0.007));
+        prevMouse = { x: e.clientX, y: e.clientY };
+    }
+});
+
+window.addEventListener('wheel', (e) => {
+    camDistance = Math.max(7, Math.min(24, camDistance + e.deltaY * 0.01));
+});
+
+// ==================== SÜRÜŞ KONTROLLERİ (W, A, S, D) ====================
+const keys = { w: false, a: false, s: false, d: false };
+window.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (k === 'w' || e.key === 'ArrowUp') keys.w = true;
+    if (k === 's' || e.key === 'ArrowDown') keys.s = true;
+    if (k === 'a' || e.key === 'ArrowLeft') keys.a = true;
+    if (k === 'd' || e.key === 'ArrowRight') keys.d = true;
+    if (k === 'p') togglePhone();
+});
+window.addEventListener('keyup', (e) => {
+    const k = e.key.toLowerCase();
+    if (k === 'w' || e.key === 'ArrowUp') keys.w = false;
+    if (k === 's' || e.key === 'ArrowDown') keys.s = false;
+    if (k === 'a' || e.key === 'ArrowLeft') keys.a = false;
+    if (k === 'd' || e.key === 'ArrowRight') keys.d = false;
+});
+
+// ==================== OYUN MEKANİKLERİ ====================
+function notify(msg) {
+    const bar = document.getElementById("notification-bar");
+    bar.innerText = msg;
+    bar.style.opacity = "1";
+}
+
+function getCapacity() {
+    const model = BUS_MODELS.find(m => m.level === state.busLevel) || BUS_MODELS[0];
+    return model.capacity;
+}
+
+function sellTickets() {
+    if (state.mode !== "BRANCH") return;
+    const cap = getCapacity();
+    if (state.passengers >= cap) {
+        notify("Otobüs tamamen doldu! Seferi başlatabilirsin.");
+        return;
+    }
+    const cityObj = CITIES.find(c => c.name === state.currentCity) || CITIES[0];
+    const added = Math.min(cap - state.passengers, Math.floor(Math.random() * 6) + 5);
+    const earned = added * cityObj.ticketPrice;
+    state.passengers += added;
+    state.money += earned;
+    updateUI();
+    saveGame();
+    notify(`🎟️ ${added} yolcuya bilet kesildi! (+${earned} ₺)`);
+}
+
+function openRouteSelector() {
+    if (state.mode !== "BRANCH") return;
+    if (state.passengers === 0) {
+        notify("⚠️ Otobüs boş! Önce 'Bilet Kes & Yolcu Al' butonuna bas.");
+        return;
+    }
+    // Açık şubelerden mevcut şehir dışındakini seç
+    const targets = state.unlockedCities.filter(c => c !== state.currentCity);
+    let target = targets[0];
+    if (targets.length > 1) {
+        const choice = prompt("Gidilecek şubeyi yazın:\n" + targets.join(", "), targets[0]);
+        if (choice && targets.includes(choice)) target = choice;
+    }
+    startTrip(target);
+}
+
+function startTrip(dest) {
+    state.destinationCity = dest;
+    state.mode = "DRIVING";
+    state.tripTimeLeft = 300; // Tam 5 dakika (300 saniye)
+    state.servedThisTrip = false;
+    state.breakTakenThisTrip = false;
+    state.serviceRequested = false;
+
+    // Otobüsü yolun sağ şeridine al
+    busMesh.position.set(3.2, 0, 0);
+    busMesh.rotation.y = 0;
+    stationGroup.visible = false;
+
+    updateUI();
+    notify(`🚌 ${state.currentCity} ➔ ${dest} seferi başladı! 5 dakikalık yolculukta W/A/S/D ile otobüsü sür.`);
+}
+
+function serveRefreshments() {
+    if (state.mode !== "DRIVING") return;
+    const needed = Math.max(1, Math.ceil(state.passengers / 6));
+    if (state.water < needed || state.cake < needed) {
+        notify(`⚠️ Yeterli ikram yok! Telefon -> Market'ten en az ${needed} Su ve ${needed} Kek al.`);
+        return;
+    }
+    state.water -= needed;
+    state.cake -= needed;
+    state.servedThisTrip = true;
+    state.serviceRequested = false;
+    const bonus = state.hasAttendant ? 350 : 200;
+    state.money += bonus;
+    updateUI();
+    saveGame();
+    notify(state.hasAttendant
+        ? `👔 Muavin direksiyonu devraldı ve ikramları dağıttı! (+${bonus} ₺ bahşiş)`
+        : `🧁 Yolculara kek ve su ikram edildi! Memnuniyet arttı (+${bonus} ₺)`);
+}
+
+function enterWashMode() {
+    if (state.mode !== "BREAK") return;
+    state.mode = "WASHING";
+    camYaw = 1.1;
+    camPitch = 0.25;
+    camDistance = 9.5;
+    document.getElementById("wash-overlay").style.display = "block";
+    document.getElementById("wash-progress").style.width = state.cleanliness + "%";
+}
+
+function exitWashMode() {
+    state.mode = "BREAK";
+    document.getElementById("wash-overlay").style.display = "none";
+    updateUI();
+}
+
+function scrubBus(e) {
+    mouseVec.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouseVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouseVec, camera);
+    const hits = raycaster.intersectObjects(busMesh.children, true);
+    if (hits.length > 0 && state.cleanliness < 100) {
+        state.cleanliness = Math.min(100, state.cleanliness + 2.5);
+        updateBusAppearance();
+        document.getElementById("wash-progress").style.width = state.cleanliness + "%";
+        document.getElementById("ui-clean").innerText = Math.floor(state.cleanliness);
+        if (state.cleanliness >= 100) {
+            notify("✨ Otobüs pırıl pırıl parlıyor! Yıkamayı bitirip yola devam edebilirsin.");
         }
     }
+}
 
-    function oyunuKaydet() {
-        localStorage.setItem("sim3dSave", JSON.stringify(oyun));
-        alert("Oyun kaydedildi!");
+function resumeFromBreak() {
+    if (state.mode !== "BREAK") return;
+    state.mode = "DRIVING";
+    stationGroup.visible = false;
+    updateUI();
+    notify("▶️ Mola bitti, hedef şubeye doğru yola devam ediliyor!");
+}
+
+function finishTrip() {
+    state.mode = "BRANCH";
+    state.currentCity = state.destinationCity;
+    const arrivedPassengers = state.passengers;
+    state.passengers = 0;
+
+    // Perona yanaş
+    busMesh.position.set(-4.5, 0, 0);
+    busMesh.rotation.y = 0;
+    stationGroup.visible = true;
+    stationGroup.position.z = 0;
+
+    const arrivalBonus = arrivedPassengers * 45;
+    state.money += arrivalBonus;
+    updateUI();
+    saveGame();
+    notify(`🏁 ${state.currentCity} Şubesine sağ salim ulaşıldı! Yolcular indi (+${arrivalBonus} ₺ sefer primi).`);
+}
+
+// ==================== 1 SANİYELİK ZAMANLAYICI VE OLAY TETİKLEYİCİLER ====================
+setInterval(() => {
+    if (state.mode === "DRIVING") {
+        // Otobüs hareket ediyorsa süre azalsın (veya şoför varsa yavaş ilerlesin)
+        const moving = Math.abs(speed) > 0.05 || state.hasDriver;
+        if (moving) {
+            state.tripTimeLeft = Math.max(0, state.tripTimeLeft - 1);
+            // Yolculukta otobüs yavaşça kirlenir
+            if (state.tripTimeLeft % 4 === 0 && state.cleanliness > 10) {
+                state.cleanliness = Math.max(10, state.cleanliness - 1);
+                updateBusAppearance();
+            }
+        }
+
+        // 220. saniye civarı (ilk 1.5 dk sonra) rastgele ikram isteği
+        if (state.tripTimeLeft === 220 && !state.servedThisTrip && !state.serviceRequested) {
+            state.serviceRequested = true;
+            notify("🔔 Yolcular acıktı! Alttaki 'İkram Dağıt' butonuna basarak kek ve su dağıt!");
+            updateUI();
+        }
+
+        // 150. saniyede (yolun yarısında) Mola Tesisi
+        if (state.tripTimeLeft === 150 && !state.breakTakenThisTrip) {
+            state.breakTakenThisTrip = true;
+            state.mode = "BREAK";
+            speed = 0;
+            stationGroup.visible = true;
+            stationGroup.position.z = 0;
+            busMesh.position.x = -3.5;
+            notify("☕ Dinlenme Tesisine geldik! Mola verildi. İstersen otobüsü yıkayıp temizleyebilirsin.");
+            updateUI();
+        }
+
+        // 0 saniye: Hedef şubeye varış
+        if (state.tripTimeLeft === 0) {
+            speed = 0;
+            finishTrip();
+        }
+        updateTimerText();
+    }
+}, 1000);
+
+// Otomatik Kayıt (Her 20 saniyede bir)
+setInterval(saveGame, 20000);
+
+// ==================== CEP TELEFONU UYGULAMALARI ====================
+let activeTab = 'market';
+function togglePhone() {
+    const modal = document.getElementById("phone-modal");
+    const isOpen = modal.style.display === "flex";
+    modal.style.display = isOpen ? "none" : "flex";
+    if (!isOpen) renderPhoneContent();
+}
+
+function switchTab(tab, btn) {
+    activeTab = tab;
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    if (btn) btn.classList.add("active");
+    renderPhoneContent();
+}
+
+function renderPhoneContent() {
+    const body = document.getElementById("phone-body");
+    body.innerHTML = "";
+
+    if (activeTab === 'market') {
+        body.innerHTML = `
+            <div class="app-item">
+                <div><b>🥤 10 Adet Su Paketi</b><br><small>Stok: ${state.water} | Fiyat: 80 ₺</small></div>
+                <button onclick="buySupply('water', 10, 80)">Satın Al</button>
+            </div>
+            <div class="app-item">
+                <div><b>🧁 10 Adet Kek Paketi</b><br><small>Stok: ${state.cake} | Fiyat: 120 ₺</small></div>
+                <button onclick="buySupply('cake', 10, 120)">Satın Al</button>
+            </div>
+            <div class="app-item">
+                <div><b>📦 Tam İkram Seti (25 Su + 25 Kek)</b><br><small>Fiyat: 450 ₺</small></div>
+                <button onclick="buyFullSet()">Satın Al</button>
+            </div>
+        `;
+    } else if (activeTab === 'branches') {
+        CITIES.forEach(c => {
+            const owned = state.unlockedCities.includes(c.name);
+            const isHere = state.currentCity === c.name;
+            let actionHtml = "";
+            if (!owned) {
+                actionHtml = `<button onclick="buyBranch('${c.name}', ${c.cost})">${c.cost} ₺ Aç</button>`;
+            } else if (isHere) {
+                actionHtml = `<span style="color:#4ade80; font-weight:bold;">Buradasın</span>`;
+            } else {
+                actionHtml = `<button style="background:#0284c7;" ${state.mode !== 'BRANCH' ? 'disabled' : ''} onclick="teleportBranch('${c.name}')">Işınlan</button>`;
+            }
+            body.innerHTML += `
+                <div class="app-item">
+                    <div><b>🏢 ${c.name} Şubesi</b><br><small>Bilet: ${c.ticketPrice} ₺</small></div>
+                    ${actionHtml}
+                </div>
+            `;
+        });
+    } else if (activeTab === 'garage') {
+        BUS_MODELS.forEach(m => {
+            const owned = state.busLevel >= m.level;
+            body.innerHTML += `
+                <div class="app-item">
+                    <div><b>🚌 ${m.name}</b><br><small>Kapasite: ${m.capacity} Yolcu</small></div>
+                    ${owned
+                        ? `<span style="color:#38bdf8; font-weight:bold;">${state.busLevel === m.level ? 'Aktif' : 'Alındı'}</span>`
+                        : `<button onclick="buyBus(${m.level}, ${m.cost})">${m.cost} ₺</button>`}
+                </div>
+            `;
+        });
+        const engCost = state.engineLevel * 2500;
+        body.innerHTML += `
+            <div class="app-item">
+                <div><b>⚙️ Motor Güçlendirme (Sv.${state.engineLevel})</b><br><small>Maksimum hızı artırır</small></div>
+                <button onclick="upgradeEngine(${engCost})">${engCost} ₺</button>
+            </div>
+            <div class="app-item" style="border-color:#dc2626;">
+                <div><b>⚠️ Kaydı Sıfırla</b><br><small>Tüm ilerlemeyi siler</small></div>
+                <button style="background:#dc2626;" onclick="resetGame()">Sıfırla</button>
+            </div>
+        `;
+    } else if (activeTab === 'staff') {
+        body.innerHTML = `
+            <div class="app-item">
+                <div><b>👔 Profesyonel Muavin</b><br><small>İkram bahşişlerini artırır</small></div>
+                ${state.hasAttendant
+                    ? `<span style="color:#4ade80;">İşe Alındı</span>`
+                    : `<button onclick="hireStaff('attendant', 3000)">3000 ₺ Al</button>`}
+            </div>
+            <div class="app-item">
+                <div><b>🧑‍✈️ Yardımcı Kaptan</b><br><small>Otomatik seyir desteği sağlar</small></div>
+                ${state.hasDriver
+                    ? `<span style="color:#4ade80;">İşe Alındı</span>`
+                    : `<button onclick="hireStaff('driver', 5000)">5000 ₺ Al</button>`}
+            </div>
+        `;
+    }
+}
+
+function buySupply(type, amount, cost) {
+    if (state.money < cost) return notify("Yeterli paranız yok!");
+    state.money -= cost;
+    state[type] += amount;
+    updateUI(); renderPhoneContent(); saveGame();
+    notify(`Marketten ${amount} adet ${type === 'water' ? 'su' : 'kek'} otobüse yüklendi!`);
+}
+
+function buyFullSet() {
+    if (state.money < 450) return notify("Yeterli paranız yok!");
+    state.money -= 450;
+    state.water += 25;
+    state.cake += 25;
+    updateUI(); renderPhoneContent(); saveGame();
+    notify("Tam ikram seti bagaja yüklendi!");
+}
+
+function buyBranch(cityName, cost) {
+    if (state.money < cost) return notify("Yeni şube için yeterli paranız yok!");
+    state.money -= cost;
+    state.unlockedCities.push(cityName);
+    updateUI(); renderPhoneContent(); saveGame();
+    notify(`🎉 Tebrikler! ${cityName} şubesi hizmete açıldı!`);
+}
+
+function teleportBranch(cityName) {
+    if (state.mode !== "BRANCH") return notify("Sadece şubedeyken ışınlanabilirsiniz!");
+    state.currentCity = cityName;
+    state.passengers = 0;
+    updateUI(); renderPhoneContent(); saveGame();
+    notify(`⚡ ${cityName} şubesine ışınlandınız!`);
+}
+
+function buyBus(level, cost) {
+    if (state.money < cost) return notify("Yeterli paranız yok!");
+    state.money -= cost;
+    state.busLevel = level;
+    updateBusAppearance();
+    updateUI(); renderPhoneContent(); saveGame();
+    notify("🚌 Yeni otobüsünüz filoya katıldı!");
+}
+
+function upgradeEngine(cost) {
+    if (state.money < cost) return notify("Yeterli paranız yok!");
+    state.money -= cost;
+    state.engineLevel++;
+    updateUI(); renderPhoneContent(); saveGame();
+    notify(`⚙️ Motor Seviye ${state.engineLevel} olarak güçlendirildi!`);
+}
+
+function hireStaff(role, cost) {
+    if (state.money < cost) return notify("Yeterli paranız yok!");
+    state.money -= cost;
+    if (role === 'attendant') state.hasAttendant = true;
+    if (role === 'driver') state.hasDriver = true;
+    updateUI(); renderPhoneContent(); saveGame();
+    notify("👔 Yeni çalışan ekibinize katıldı!");
+}
+
+// ==================== ARAYÜZ GÜNCELLEME ====================
+function updateTimerText() {
+    if (state.mode !== "DRIVING" && state.mode !== "BREAK" && state.mode !== "WASHING") {
+        document.getElementById("ui-timer").innerText = "--:--";
+        return;
+    }
+    const m = Math.floor(state.tripTimeLeft / 60).toString().padStart(2, '0');
+    const s = (state.tripTimeLeft % 60).toString().padStart(2, '0');
+    document.getElementById("ui-timer").innerText = `${m}:${s}`;
+}
+
+function updateUI() {
+    document.getElementById("ui-money").innerText = state.money;
+    document.getElementById("ui-location").innerText =
+        state.mode === "BRANCH" ? `${state.currentCity} Şubesi` :
+        state.mode === "DRIVING" ? `${state.currentCity} ➔ ${state.destinationCity}` : "Dinlenme Tesisi";
+    document.getElementById("ui-passengers").innerText = state.passengers;
+    document.getElementById("ui-capacity").innerText = getCapacity();
+    document.getElementById("ui-water").innerText = state.water;
+    document.getElementById("ui-cake").innerText = state.cake;
+    document.getElementById("ui-clean").innerText = Math.floor(state.cleanliness);
+
+    document.getElementById("btn-tickets").style.display = state.mode === "BRANCH" ? "inline-block" : "none";
+    document.getElementById("btn-start-trip").style.display = state.mode === "BRANCH" ? "inline-block" : "none";
+    document.getElementById("btn-serve").style.display = (state.mode === "DRIVING" && !state.servedThisTrip) ? "inline-block" : "none";
+    document.getElementById("btn-wash").style.display = state.mode === "BREAK" ? "inline-block" : "none";
+    document.getElementById("btn-resume").style.display = state.mode === "BREAK" ? "inline-block" : "none";
+
+    updateTimerText();
+}
+
+// ==================== ANA FİZİK VE RENDER DÖNGÜSÜ ====================
+let speed = 0;
+let steerAngle = 0;
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    const maxSpeed = 0.65 + (state.engineLevel * 0.12);
+
+    if (state.mode === "DRIVING") {
+        if (keys.w) speed = Math.min(maxSpeed, speed + 0.015);
+        else if (keys.s) speed = Math.max(-0.25, speed - 0.025);
+        else if (state.hasDriver) speed = Math.max(speed * 0.98, 0.35);
+        else speed *= 0.97;
+
+        if (Math.abs(speed) > 0.02) {
+            if (keys.a) steerAngle = Math.min(0.035, steerAngle + 0.003);
+            else if (keys.d) steerAngle = Math.max(-0.035, steerAngle - 0.003);
+            else steerAngle *= 0.85;
+
+            busMesh.position.x += steerAngle * (speed * 18);
+            // Yol sınırları (-6.2 ile +6.2 arası)
+            busMesh.position.x = Math.max(-6.2, Math.min(6.2, busMesh.position.x));
+            busMesh.rotation.y = steerAngle * 4;
+        }
+
+        // Sonsuz yol illüzyonu: Otobüs Z ekseninde sabit kalır, şeritler ve ağaçlar geriye akar
+        const moveZ = speed * 2.2;
+        stripes.forEach(s => {
+            s.position.z -= moveZ;
+            if (s.position.z < -60) s.position.z += 480;
+            if (s.position.z > 420) s.position.z -= 480;
+        });
+        sceneryObjects.forEach(obj => {
+            obj.position.z -= moveZ;
+            if (obj.position.z < -60) obj.position.z += 600;
+            if (obj.position.z > 540) obj.position.z -= 600;
+        });
+
+        // Tekerlek dönüşü
+        wheels.forEach((w, idx) => {
+            w.rotation.x += speed * 0.5;
+            if (idx < 2) w.rotation.y = steerAngle * 6;
+        });
+    } else {
+        speed = 0;
+        busMesh.rotation.y *= 0.9;
     }
 
-    function ikramDagit() {
-        oyun.para += 150;
-        document.getElementById("para").innerText = oyun.para;
-        alert("Harika! Yolculara su ve kek ikram edildi, memnuniyet arttı (+150 ₺).");
-        oyunuKaydet();
-    }
+    document.getElementById("ui-speed").innerText = Math.round(Math.abs(speed) * 140);
 
-    // Oyun Döngüsü (Animation Loop)
-    function animate() {
-        requestAnimationFrame(animate);
+    // Kamera pozisyonunu otobüse göre yumuşakça güncelle
+    const targetCamX = busMesh.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDistance;
+    const targetCamY = busMesh.position.y + 1.8 + Math.sin(camPitch) * camDistance;
+    const targetCamZ = busMesh.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDistance;
 
-        if (tuslar.ileri) hiz = 0.2;
-        else if (tuslar.geri) hiz = -0.1;
-        else hiz *= 0.95; // Sürtünme
+    camera.position.lerp(new THREE.Vector3(targetCamX, targetCamY, targetCamZ), 0.12);
+    camera.lookAt(busMesh.position.x, busMesh.position.y + 1.8, busMesh.position.z + 1.5);
 
-        otobüs.position.z += hiz;
-        camera.position.z = otobüs.position.z - 8;
+    renderer.render(scene, camera);
+}
 
-        renderer.render(scene, camera);
-    }
-    animate();
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Başlat
+loadGame();
+if (state.mode === "BRANCH") {
+    busMesh.position.set(-4.5, 0, 0);
+}
+updateBusAppearance();
+updateUI();
+animate();
 </script>
-
 </body>
 </html>
