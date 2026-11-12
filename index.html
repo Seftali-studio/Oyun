@@ -3,252 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pamukkale & Ege Turizm - Otobüs Simülasyonu</title>
+    <title>3D Otobüs Simülatörü - Ege Turizm</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        body { margin: 0; overflow: hidden; background: #111; font-family: sans-serif; }
+        #ui {
+            position: absolute; top: 10px; left: 10px; color: white;
+            background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px;
+            pointer-events: none;
         }
-        .container {
-            width: 100%;
-            max-width: 800px;
-            background-color: #1e293b;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #334155;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
-        h1 { margin: 0; color: #38bdf8; font-size: 1.5em; }
-        .stats { display: flex; gap: 15px; font-weight: bold; }
-        .stat-box { background: #334155; padding: 8px 12px; border-radius: 6px; font-size: 0.9em; }
-        
-        .panel {
-            background: #0f172a;
-            border: 1px solid #334155;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-        h2 { margin-top: 0; color: #facc15; font-size: 1.2em; border-bottom: 1px solid #334155; padding-bottom: 8px; }
-        
-        button {
-            background-color: #0284c7;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s;
-            margin: 5px 5px 5px 0;
-        }
-        button:hover { background-color: #0369a1; }
-        button:disabled { background-color: #475569; cursor: not-allowed; }
-        .btn-success { background-color: #16a34a; }
-        .btn-success:hover { background-color: #15803d; }
-        .btn-danger { background-color: #dc2626; }
-        .btn-danger:hover { background-color: #b91c1c; }
-
-        .log-box {
-            background: #020617;
-            border: 1px solid #1e293b;
-            padding: 10px;
-            height: 120px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 0.85em;
-            color: #4ade80;
-            border-radius: 6px;
-        }
-        .flex-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-panel { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+        button { padding: 12px 20px; font-weight: bold; background: #eab308; border: none; border-radius: 6px; cursor: pointer; }
+        button:hover { background: #ca8a04; }
     </style>
+    <!-- Three.js 3D Kütüphanesi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-<div class="container">
-    <header>
-        <h1>🚌 Ege Ulaşım Simülatörü</h1>
-        <div class="stats">
-            <div class="stat-box">💰 <span id="para">5000</span> ₺</div>
-            <div class="stat-box">⭐ Puan: <span id="puan">100</span></div>
-        </div>
-    </header>
+<div id="ui">
+    <h2>🚌 3D Yolculuk Modu</h2>
+    <p>Para: <span id="para">5000</span> ₺</p>
+    <p>Durum: <span id="durum">Yolda Sürüş Yapılıyor... (W/S ile hızlan)</span></p>
+</div>
 
-    <!-- DURUM / LOG EKRANI -->
-    <div class="panel">
-        <h2>📢 Durum ve Bildirimler</h2>
-        <div id="logEkrani" class="log-box">Şirket kuruldu! Denizli ve İzmir bayileri aktif. Sefer düzenlemeye hazırsınız.</div>
-    </div>
-
-    <!-- SEFER PANELİ -->
-    <div class="panel" id="seferPanel">
-        <h2>🛣️ Sefer Yönetimi</h2>
-        <p>Rota: <b>Denizli ⇄ İzmir</b> | Yol Süresi: 10 Saniye</p>
-        <div class="flex-row">
-            <button onclick="seferBaslat()" id="btnSefer">Sefer Başlat (İkramlı)</button>
-            <button onclick="oyunuKaydet()" class="btn-success">💾 Manuel Kaydet</button>
-            <button onclick="kaydiSifirla()" class="btn-danger">🗑️ Sıfırla</button>
-        </div>
-    </div>
-
-    <!-- MARKET & İKRAMLAR -->
-    <div class="panel">
-        <h2>🛒 İkram Tedariği (Market)</h2>
-        <p>Otobüse yolcular için su ve kek alın:</p>
-        <div class="flex-row">
-            <button onclick="malzemeAl('su', 5, 50)">5 Su Al (50 ₺) - Stok: <span id="stokSu">10</span></button>
-            <button onclick="malzemeAl('kek', 5, 75)">5 Kek Al (75 ₺) - Stok: <span id="stokKek">10</span></button>
-        </div>
-    </div>
-
-    <!-- OTOBÜS & BAKIM -->
-    <div class="panel">
-        <h2>🧽 Otobüs Bakımı & Temizlik</h2>
-        <p>Otobüs Durumu: <span id="otobusDurum" style="color: #4ade80; font-weight: bold;">Temiz ve Bakımlı</span></p>
-        <div class="flex-row">
-            <button onclick="otobusYika()" id="btnYika">Otobüsü Yıka (100 ₺)</button>
-        </div>
-    </div>
+<div class="btn-panel">
+    <button onclick="ikramDagit()">🧃 İkram Dağıt (Su/Kek)</button>
+    <button onclick="oyunuKaydet()" style="background: #22c55e; color:white;">💾 Kaydet</button>
 </div>
 
 <script>
-    // Oyun Verileri
-    let oyun = {
-        para: 5000,
-        puan: 100,
-        su: 10,
-        kek: 10,
-        temizlik: 100, // 0-100 arası
-        seferdeMi: false
-    };
+    let oyun = { para: 5000, skor: 0 };
+    
+    // --- 3D SAHNE KURULUMU (THREE.JS) ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb); // Gökyüzü mavisi
 
-    // Sayfa Yüklenince Kaydı Yükle
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Işık
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(0, 20, 10);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+    // Yol
+    const yolGeo = new THREE.PlaneGeometry(10, 1000);
+    const yolMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+    const yol = new THREE.Mesh(yolGeo, yolMat);
+    yol.rotation.x = -Math.PI / 2;
+    scene.add(yol);
+
+    // Otobüs (Basit 3D Kutu Temsili - İleride detaylı 3D model ekleyebiliriz)
+    const otobusGeo = new THREE.BoxGeometry(2, 2, 5);
+    const otobusMat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
+    const otobüs = new THREE.Mesh(otobusGeo, otobusMat);
+    otobüs.position.set(0, 1, 0);
+    scene.add(otobüs);
+
+    camera.position.set(0, 5, -8);
+    camera.lookAt(otobüs.position);
+
+    // Hareket Kontrolleri
+    let hiz = 0;
+    let tuslar = { ileri: false, geri: false };
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'w' || e.key === 'ArrowUp') tuslar.ileri = true;
+        if (e.key === 's' || e.key === 'ArrowDown') tuslar.geri = true;
+    });
+    window.addEventListener('keyup', (e) => {
+        if (e.key === 'w' || e.key === 'ArrowUp') tuslar.ileri = false;
+        if (e.key === 's' || e.key === 'ArrowDown') tuslar.geri = false;
+    });
+
+    // Kayıt Yükleme
     window.onload = function() {
-        const kayit = localStorage.getItem("otobusSimulasyonSave");
-        if (kayit) {
+        const kayit = localStorage.getItem("sim3dSave");
+        if(kayit) {
             oyun = JSON.parse(kayit);
-            ekraniGuncelle();
-            logEkraniEkle("Kayıtlı oyununuz başarıyla yüklendi!");
-        } else {
-            ekraniGuncelle();
+            document.getElementById("para").innerText = oyun.para;
         }
-    };
-
-    function ekraniGuncelle() {
-        document.getElementById("para").innerText = oyun.para;
-        document.getElementById("puan").innerText = oyun.puan;
-        document.getElementById("stokSu").innerText = oyun.su;
-        document.getElementById("stokKek").innerText = oyun.kek;
-        
-        let durumMetni = "Temiz ve Bakımlı";
-        let renk = "#4ade80";
-        if (oyun.temizlik < 50) { durumMetni = "Biraz Kirli"; renk = "#facc15"; }
-        if (oyun.temizlik < 20) { durumMetni = "Çok Kirli (Yolcular Şikayetçi!)"; renk = "#dc2626"; }
-        
-        document.getElementById("otobusDurum").innerText = durumMetni;
-        document.getElementById("otobusDurum").style.color = renk;
-    }
-
-    function logEkraniEkle(mesaj) {
-        const logBox = document.getElementById("logEkrani");
-        logBox.innerHTML += "<br>" + mesaj;
-        logBox.scrollTop = logBox.scrollHeight;
-    }
-
-    function malzemeAl(tur, miktar, fiyat) {
-        if (oyun.para >= fiyat) {
-            oyun.para -= fiyat;
-            if (tur === 'su') oyun.su += miktar;
-            if (tur === 'kek') oyun.kek += miktar;
-            ekraniGuncelle();
-            logEkraniEkle(`Marketten ${miktar} adet ${tur} alındı (-${fiyat} ₺).`);
-            oyunuKaydet();
-        } else {
-            logEkraniEkle("Yeterli paranız yok!");
-        }
-    }
-
-    function otobusYika() {
-        if (oyun.para >= 100) {
-            oyun.para -= 100;
-            oyun.temizlik = 100;
-            ekraniGuncelle();
-            logEkraniEkle("Otobüs pırıl pırıl yıkandı (-100 ₺).");
-            oyunuKaydet();
-        } else {
-            logEkraniEkle("Yıkayacak yeterli paranız yok!");
-        }
-    }
-
-    function seferBaslat() {
-        if (oyun.seferdeMi) return;
-        
-        if (oyun.su < 2 || oyun.kek < 2) {
-            logEkraniEkle("⚠️ Uyarı: Otobüste yeterli su veya kek yok! Önce marketten ikram alın.");
-            return;
-        }
-
-        oyun.seferdeMi = true;
-        document.getElementById("btnSefer").disabled = true;
-        logEkraniEkle("🚌 Denizli otogarından İzmir'e hareket edildi...");
-
-        // 3. saniyede Mola Durumu
-        setTimeout(() => {
-            logEkraniEkle("☕ Aydın dinlenme tesislerinde mola verildi. Yolcular inip ihtiyaç gideriyor.");
-            oyun.temizlik -= 15; // Yolculukla biraz kirlenir
-            ekraniGuncelle();
-        }, 3500);
-
-        // 7. saniyede İkram Dağıtımı
-        setTimeout(() => {
-            oyun.su -= 2;
-            oyun.kek -= 2;
-            logEkraniEkle("🧃 Muavin yolculara su ve kek ikram etti. Yolcular memnun!");
-            oyun.puan += 10;
-            ekraniGuncelle();
-        }, 7000);
-
-        // 10. saniyede Sefer Sonu
-        setTimeout(() => {
-            let kazanilanPara = 850;
-            oyun.para += kazanilanPara;
-            oyun.seferdeMi = false;
-            document.getElementById("btnSefer").disabled = false;
-            logEkraniEkle(`🏁 İzmir otogarına varıldı! Bilet gelirleri alındı (+${kazanilanPara} ₺).`);
-            ekraniGuncelle();
-            oyunuKaydet(); // Sefer bitince otomatik kaydet
-        }, 10000);
     }
 
     function oyunuKaydet() {
-        localStorage.setItem("otobusSimulasyonSave", JSON.stringify(oyun));
-        logEkraniEkle("💾 Oyun ilerlemesi kaydedildi.");
+        localStorage.setItem("sim3dSave", JSON.stringify(oyun));
+        alert("Oyun kaydedildi!");
     }
 
-    function kaydiSifirla() {
-        if(confirm("Tüm şirket verileriniz silinecek, emin misiniz?")) {
-            localStorage.removeItem("otobusSimulasyonSave");
-            oyun = { para: 5000, puan: 100, su: 10, kek: 10, temizlik: 100, seferdeMi: false };
-            ekraniGuncelle();
-            logEkraniEkle("⚠️ Şirket iflas etti/sıfırlandı. Yeni baştan başlanıyor.");
-        }
+    function ikramDagit() {
+        oyun.para += 150;
+        document.getElementById("para").innerText = oyun.para;
+        alert("Harika! Yolculara su ve kek ikram edildi, memnuniyet arttı (+150 ₺).");
+        oyunuKaydet();
     }
 
-    // Her 20 saniyede bir otomatik yedekleme (Auto-save)
-    setInterval(oyunuKaydet, 20000);
+    // Oyun Döngüsü (Animation Loop)
+    function animate() {
+        requestAnimationFrame(animate);
+
+        if (tuslar.ileri) hiz = 0.2;
+        else if (tuslar.geri) hiz = -0.1;
+        else hiz *= 0.95; // Sürtünme
+
+        otobüs.position.z += hiz;
+        camera.position.z = otobüs.position.z - 8;
+
+        renderer.render(scene, camera);
+    }
+    animate();
 </script>
 
 </body>
